@@ -5,6 +5,7 @@ import webbrowser
 import os
 import threading
 import time
+import random  
 
 # Initialize the speech recognizer and text-to-speech engine
 r = sr.Recognizer()
@@ -101,6 +102,46 @@ def greet():
 
     speak("How can I assist you today?")
 
+# Define a function to get the weather
+def get_weather():
+    speak("Which city would you like to know the weather for?")
+    city = recognize_speech()
+    
+    if city:
+        try:
+            url = f"https://www.google.com/search?q=weather+in+{city}"
+            webbrowser.get().open(url)
+            speak(f"Here's the weather for {city}")
+        except Exception as e:
+            speak("Sorry, I couldn't retrieve the weather information.")
+
+# Define a function to tell a joke
+def tell_joke():
+    jokes = [
+        "Why don't scientists trust atoms? Because they make up everything!",
+        "Did you hear about the mathematician who's afraid of negative numbers? He'll stop at nothing to avoid them!",
+        "Why don't we tell secrets on a farm? Because the potatoes have eyes and the corn has ears!",
+        "What do you call a fake noodle? An impasta!",
+        "How does a penguin build its house? Igloos it together!"
+    ]
+    joke = random.choice(jokes)
+    speak(joke)
+
+# Define a function to read the to-do list
+def read_todo():
+    try:
+        with open('todo.txt', 'r') as f:
+            todos = f.readlines()
+        
+        if todos:
+            speak("Here are your to-do items:")
+            for i, todo in enumerate(todos, 1):
+                speak(f"Item {i}: {todo.strip()}")
+        else:
+            speak("Your to-do list is empty.")
+    except FileNotFoundError:
+        speak("You don't have a to-do list yet.")
+
 # Greet the user
 greet()
 
@@ -113,8 +154,14 @@ while True:
             set_reminder()
         elif any(word in command for word in ['to-do', 'todo', 'task', 'add it', 'add to list']):
             create_todo()
+        elif any(word in command for word in ['read todo', 'read my list', 'what is on my list']):
+            read_todo()
         elif any(word in command for word in ['search', 'look up', 'find', 'google']):
             search_web()
+        elif any(word in command for word in ['weather', 'temperature', 'forecast']):
+            get_weather()
+        elif any(word in command for word in ['joke', 'tell me a joke', 'make me laugh']):
+            tell_joke()
         elif any(word in command for word in ['exit', 'stop', 'quit', 'goodbye']):
             speak("Goodbye!")
             break
