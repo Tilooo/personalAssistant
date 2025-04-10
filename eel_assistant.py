@@ -332,11 +332,33 @@ def stop_assistant():
     return "Assistant stopped"
 
 # Starts the Eel application
+def ensure_background_image():
+    """Ensure a background image exists for the web interface"""
+    background_path = os.path.join('web', 'background1.jpg')
+    
+    # If background image doesn't exist, create a placeholder or download one
+    if not os.path.exists(background_path):
+        try:
+            # Try to download a nice background image
+            import urllib.request
+            print("Downloading a background image...")
+            # A nice abstract blue background from a public domain source
+            image_url = "https://source.unsplash.com/1600x900/?digital,assistant,blue"
+            urllib.request.urlretrieve(image_url, background_path)
+            print(f"Background image downloaded to {background_path}")
+        except Exception as e:
+            print(f"Could not download background image: {e}")
+            print("Using a solid color background instead")
+
+# Update the main section to call this function
 if __name__ == "__main__":
     try:
+        # Ensure we have a background image
+        ensure_background_image()
+        
         eel.start('index.html', size=(800, 600), block=False)
         
-        # Keeps the application running
+        # Keep the application running
         while True:
             eel.sleep(1.0)
     except Exception as e:
