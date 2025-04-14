@@ -91,14 +91,18 @@ class VoiceAssistant:
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
                 print("Listening...")
                 eel.updateStatus("Listening...")
-
+                eel.showListeningIndicator()
+                
+                # Shorter timeout for faster response
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
                 print("Processing audio...")
+                eel.updateStatus("Processing audio...")
 
                 try:
                     text = self.recognizer.recognize_google(audio)
                     print(f"Recognized: {text}")
                     eel.updateUserMessage(text)
+                    eel.hideListeningIndicator()
                     return text.lower()
                 except sr.UnknownValueError:
                     print("Could not understand audio")
@@ -107,10 +111,12 @@ class VoiceAssistant:
                 except sr.RequestError as e:
                     print(f"Request error: {e}")
                     self.speak("Sorry, I'm having trouble connecting to the speech recognition service.")
+                    eel.hideListeningIndicator()
                     return None
         except Exception as e:
             print(f"Listen error: {e}")
             eel.updateStatus(f"Error: {str(e)}")
+            eel.hideListeningIndicator()
             return None
     
     def greet_user(self):
@@ -335,14 +341,11 @@ def stop_assistant():
 def ensure_background_image():
     """Ensure a background image exists for the web interface"""
     background_path = os.path.join('web', 'background1.jpg')
-    
-    # If background image doesn't exist, create a placeholder or download one
+
     if not os.path.exists(background_path):
         try:
-            # Try to download a nice background image
             import urllib.request
             print("Downloading a background image...")
-            # A nice abstract blue background from a public domain source
             image_url = "https://source.unsplash.com/1600x900/?digital,assistant,blue"
             urllib.request.urlretrieve(image_url, background_path)
             print(f"Background image downloaded to {background_path}")
@@ -350,15 +353,13 @@ def ensure_background_image():
             print(f"Could not download background image: {e}")
             print("Using a solid color background instead")
 
-# Update the main section to call this function
 if __name__ == "__main__":
     try:
-        # Ensure we have a background image
         ensure_background_image()
         
         eel.start('index.html', size=(800, 600), block=False)
         
-        # Keep the application running
+        # Keeps the application running
         while True:
             eel.sleep(1.0)
     except Exception as e:

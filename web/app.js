@@ -1,9 +1,7 @@
-// Update the status display
 function updateStatus(status) {
     const statusBar = document.getElementById('status');
     statusBar.textContent = status;
-    
-    // Change status bar color when listening
+
     if (status.includes('Listening')) {
         statusBar.classList.add('listening');
         document.getElementById('waveform').classList.add('active');
@@ -13,7 +11,6 @@ function updateStatus(status) {
     }
 }
 
-// Add a message from the assistant
 function updateAssistantMessage(message) {
     const conversation = document.getElementById('conversation');
     const messageDiv = document.createElement('div');
@@ -34,7 +31,6 @@ function updateAssistantMessage(message) {
     scrollToBottom();
 }
 
-// Add a message from the user
 function updateUserMessage(message) {
     const conversation = document.getElementById('conversation');
     const messageDiv = document.createElement('div');
@@ -55,7 +51,7 @@ function updateUserMessage(message) {
     scrollToBottom();
 }
 
-// Get current time in HH:MM format
+// To get current time in HH:MM format
 function getCurrentTime() {
     const now = new Date();
     let hours = now.getHours();
@@ -69,7 +65,7 @@ function getCurrentTime() {
     return `${hours}:${minutes} ${ampm}`;
 }
 
-// Scroll to the bottom of the conversation
+// To scroll to the bottom of the conversation
 function scrollToBottom() {
     const conversation = document.getElementById('conversation');
     conversation.scrollTop = conversation.scrollHeight;
