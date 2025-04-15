@@ -9,6 +9,15 @@ import time
 import random
 import sys
 import json
+import requests
+
+# API keys
+try:
+    from my_api import OPENWEATHERMAP_API_KEY, NEWS_API_KEY
+except ImportError:
+    print("Warning: API keys not found. Some features will be disabled.")
+    OPENWEATHERMAP_API_KEY = ""
+    NEWS_API_KEY = ""
 
 # Initialized Eel with the web folder
 eel.init('web')
@@ -26,6 +35,8 @@ class VoiceAssistant:
             "read_todo": ["read todo", "read my list", "what is on my list"],
             "search": ["search", "look up", "find", "google"],
             "joke": ["joke", "tell me a joke", "make me laugh"],
+            "news": ["news", "headlines", "latest news"],
+            "fact": ["fact", "random fact", "tell me a fact", "interesting fact"],
             "exit": ["exit", "stop", "quit", "goodbye"],
             "thanks": ["thank you", "thanks", "appreciate it"],
             "music": ["play music", "music", "play song", "play some music"],
@@ -120,7 +131,7 @@ class VoiceAssistant:
             return None
     
     def greet_user(self):
-        hour = datetime.datetime.now().hour
+        hour = datetime.datetime.now().hour  
         
         if 0 <= hour < 12:
             greeting = "Good morning"
@@ -149,7 +160,7 @@ class VoiceAssistant:
             self.speak(f"The current time is {current_time}")
             
         elif any(phrase in command for phrase in self.commands["weather"]):
-            self.speak("I'm sorry, I don't have access to weather information at the moment.")
+            self.get_weather(command)
             
         elif any(phrase in command for phrase in self.commands["reminder"]):
             self.speak("What would you like me to remind you about?")
@@ -166,6 +177,12 @@ class VoiceAssistant:
         elif any(phrase in command for phrase in self.commands["joke"]):
             self.tell_joke()
             
+        elif any(phrase in command for phrase in self.commands["news"]):
+            self.get_news(command)
+            
+        elif any(phrase in command for phrase in self.commands["fact"]):
+            self.get_random_fact()
+            
         elif any(phrase in command for phrase in self.commands["thanks"]):
             self.speak("You're welcome! Is there anything else I can help you with?")
             
@@ -179,7 +196,7 @@ class VoiceAssistant:
             self.speak("I heard you, but I'm not sure how to help with that yet.")
     
     def add_todo(self, command):
-        # Extractd the task from the command
+        # Extracted the task from the command
         task = command.split("add", 1)[-1].split("to", 1)[0].strip()
         if not task or task == "it":
             self.speak("What would you like to add to your to-do list?")
@@ -306,9 +323,140 @@ class VoiceAssistant:
                 
             except Exception as e:
                 print(f"Error in listening loop: {e}")
-                time.sleep(0.5)  # Shorter delay after error
+                time.sleep(0.3)  # Shorter delay after error
+    
+    def get_weather(self, command):
+        """Get current weather for a location"""
+        # Extracts location from command
+        location = None
+        for phrase in ["weather in", "weather for", "weather at", "weather of", "temperature in", "temperature at", "get weather"]:
+            if phrase in command:
+                location = command.split(phrase, 1)[1].strip()
+                break
+        
+        # If no location found but command contains just the word "weather", check if there's any city name after
+        if not location and "weather" in command:
+            parts = command.split("weather", 1)
+            if len(parts) > 1 and parts[1].strip():
+                location = parts[1].strip()
+        
+        if not location:
+            self.speak("Which city would you like to know the weather for?")
+            return
+                
+        try:
+            # Using OpenWeatherMap API
+            url = f"https://api.openweathermap.org/data/2.5/weather?q={location}&appid={OPENWEATHERMAP_API_KEY}&units=metric"
+            
+            response = requests.get(url)
+            data = response.json()
+            
+            if response.status_code == 200:
+                # Extracts relevant weather information
+                weather_desc = data["weather"][0]["description"]
+                temp = data["main"]["temp"]
+                feels_like = data["main"]["feels_like"]
+                humidity = data["main"]["humidity"]
+                
+                weather_info = f"The weather in {location} is {weather_desc}. The temperature is {temp:.1f}°C, feels like {feels_like:.1f}°C, with {humidity}% humidity."
+                self.speak(weather_info)
+            else:
+                self.speak(f"I couldn't find weather information for {location}.")
+        except Exception as e:
+            print(f"Weather API error: {e}")
+            self.speak("Sorry, I couldn't get the weather information at the moment.")
 
-# Create an instance of the assistant after Eel is ready
+    def get_news(self, command):
+        """Get latest news headlines"""
+        try:
+            if not NEWS_API_KEY:
+                # a free news source that doesn't require API key
+                self.speak("I'll get some news headlines for you from an alternative source.")
+                
+                # Used a public RSS feed instead
+                import feedparser
+                
+                # Extracts category if specified
+                category = None
+                categories = ["business", "entertainment", "general", "health", "science", "sports", "technology"]
+                
+                for cat in categories:
+                    if cat in command:
+                        category = cat
+                        break
+                
+                # Uses different RSS feeds based on category
+                if category == "technology":
+                    feed_url = "https://feeds.bbci.co.uk/news/technology/rss.xml"
+                    self.speak(f"Here are the latest technology news headlines from BBC:")
+                elif category == "business":
+                    feed_url = "https://feeds.bbci.co.uk/news/business/rss.xml"
+                    self.speak(f"Here are the latest business news headlines from BBC:")
+                elif category == "health":
+                    feed_url = "https://feeds.bbci.co.uk/news/health/rss.xml"
+                    self.speak(f"Here are the latest health news headlines from BBC:")
+                elif category == "science":
+                    feed_url = "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml"
+                    self.speak(f"Here are the latest science news headlines from BBC:")
+                elif category == "sports":
+                    feed_url = "https://feeds.bbci.co.uk/sport/rss.xml"
+                    self.speak(f"Here are the latest sports news headlines from BBC:")
+                else:
+                    feed_url = "https://feeds.bbci.co.uk/news/world/rss.xml"
+                    self.speak("Here are the latest world news headlines from BBC:")
+                
+                # Parses the feed
+                feed = feedparser.parse(feed_url)
+                
+                # Gets the top 3 headlines
+                for i, entry in enumerate(feed.entries[:3], 1):
+                    headline = entry.title
+                    self.speak(f"{i}. {headline}")
+                
+                return
+
+            category = None
+            categories = ["business", "entertainment", "general", "health", "science", "sports", "technology"]
+            
+            if category:
+                url = f"https://newsapi.org/v2/top-headlines?country=us&category={category}&apiKey={NEWS_API_KEY}"
+                self.speak(f"Here are the latest {category} news headlines:")
+            else:
+                url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={NEWS_API_KEY}"
+                self.speak("Here are the latest news headlines:")
+            
+            response = requests.get(url)
+            data = response.json()
+            
+            if response.status_code == 200 and data["articles"]:
+                # Gets the top 3 headlines
+                for i, article in enumerate(data["articles"][:3], 1):
+                    headline = article["title"]
+                    self.speak(f"{i}. {headline}")
+            else:
+                self.speak("I couldn't find any news headlines at the moment.")
+        except Exception as e:
+            print(f"News API error: {e}")
+            self.speak("Sorry, I couldn't get the news headlines at the moment.")
+
+    def get_random_fact(self):
+        """Get a random fact"""
+        try:
+            # Using the useless facts API (no key required)
+            url = "https://uselessfacts.jsph.pl/random.json?language=en"
+            response = requests.get(url)
+            data = response.json()
+            
+            if response.status_code == 200:
+                fact = data["text"]
+                self.speak(f"Here's a random fact: {fact}")
+            else:
+                self.speak("I couldn't find a random fact at the moment.")
+        except Exception as e:
+            print(f"Random fact API error: {e}")
+            self.speak("Sorry, I couldn't get a random fact at the moment.")
+
+# Creates an instance of the assistant after Eel is ready
 assistant = None
 
 @eel.expose
@@ -352,6 +500,7 @@ def ensure_background_image():
         except Exception as e:
             print(f"Could not download background image: {e}")
             print("Using a solid color background instead")
+
 
 if __name__ == "__main__":
     try:
