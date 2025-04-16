@@ -40,7 +40,8 @@ class VoiceAssistant:
             "exit": ["exit", "stop", "quit", "goodbye"],
             "thanks": ["thank you", "thanks", "appreciate it"],
             "music": ["play music", "music", "play song", "play some music"],
-            "age": ["how old", "your age", "when were you created"]
+            "age": ["how old", "your age", "when were you created"],
+            "horoscope": ["horoscope", "zodiac", "star sign", "astrology"] 
         }
         self.listening = False
         self.listen_thread = None
@@ -191,6 +192,9 @@ class VoiceAssistant:
             
         elif any(phrase in command for phrase in self.commands["age"]):
             self.speak("I was created recently as a voice assistant. I don't have an age in the traditional sense, but I'm here to help you!")
+            
+        elif any(phrase in command for phrase in self.commands["horoscope"]):
+            self.get_horoscope(command)
             
         else:
             self.speak("I heard you, but I'm not sure how to help with that yet.")
@@ -456,8 +460,74 @@ class VoiceAssistant:
             print(f"Random fact API error: {e}")
             self.speak("Sorry, I couldn't get a random fact at the moment.")
 
-# Creates an instance of the assistant after Eel is ready
-assistant = None
+    def get_horoscope(self, command):
+        """Get horoscope for a zodiac sign"""
+        # Dictionary mapping zodiac signs to their date ranges
+        zodiac_signs = {
+            "aries": "March 21 - April 19",
+            "taurus": "April 20 - May 20",
+            "gemini": "May 21 - June 20",
+            "cancer": "June 21 - July 22",
+            "leo": "July 23 - August 22",
+            "virgo": "August 23 - September 22",
+            "libra": "September 23 - October 22",
+            "scorpio": "October 23 - November 21",
+            "sagittarius": "November 22 - December 21",
+            "capricorn": "December 22 - January 19",
+            "aquarius": "January 20 - February 18",
+            "pisces": "February 19 - March 20"
+        }
+        
+        # Extract sign from command
+        sign = None
+        for zodiac in zodiac_signs.keys():
+            if zodiac in command:
+                sign = zodiac
+                break
+        
+        if not sign:
+            # If no sign found in command, ask for it
+            self.speak("Which zodiac sign would you like to hear the horoscope for?")
+            return
+        
+        try:
+            # Using Aztro API for horoscopes
+            url = f"https://aztro.sameerkumar.website/?sign={sign}&day=today"
+            response = requests.post(url)
+            
+            if response.status_code == 200:
+                data = response.json()
+                description = data["description"]
+                compatibility = data["compatibility"]
+                mood = data["mood"]
+                lucky_number = data["lucky_number"]
+                
+                horoscope_text = f"Here's today's horoscope for {sign.capitalize()}, born {zodiac_signs[sign]}. {description} Your compatible sign is {compatibility}, your mood is {mood}, and your lucky number is {lucky_number}."
+                self.speak(horoscope_text)
+            else:
+                # Fallback to predefined horoscopes if API fails
+                fallback_horoscopes = {
+                    "aries": "Today is a day for new beginnings. Your energy is high, and you're ready to take on challenges.",
+                    "taurus": "Focus on stability today. Good time for financial decisions and enjoying life's comforts.",
+                    "gemini": "Your communication skills shine today. Great day for networking and sharing ideas.",
+                    "cancer": "Listen to your intuition today. Family matters may require your attention.",
+                    "leo": "Your creativity is at a peak. Take the spotlight and showcase your talents.",
+                    "virgo": "Details matter today. Your analytical skills will help solve a persistent problem.",
+                    "libra": "Seek balance in all things today. Relationships are highlighted and may need attention.",
+                    "scorpio": "Your intensity serves you well today. Good time for research and uncovering truths.",
+                    "sagittarius": "Adventure calls to you today. Expand your horizons through learning or travel.",
+                    "capricorn": "Focus on your goals today. Your discipline will help you make significant progress.",
+                    "aquarius": "Your innovative ideas are valuable today. Connect with like-minded individuals.",
+                    "pisces": "Your imagination is powerful today. Creative and spiritual pursuits are favored."
+                }
+                
+                self.speak(f"Here's today's horoscope for {sign.capitalize()}: {fallback_horoscopes[sign]}")
+        except Exception as e:
+            print(f"Horoscope error: {e}")
+            self.speak(f"I couldn't get the horoscope for {sign} at the moment.")
+
+    # Create an instance of the assistant after Eel is ready
+    assistant = None
 
 @eel.expose
 def start_assistant():
