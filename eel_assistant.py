@@ -41,7 +41,11 @@ class VoiceAssistant:
             "thanks": ["thank you", "thanks", "appreciate it"],
             "music": ["play music", "music", "play song", "play some music"],
             "age": ["how old", "your age", "when were you created"],
-            "horoscope": ["horoscope", "zodiac", "star sign", "astrology"] 
+            "horoscope": ["horoscope", "zodiac", "star sign", "astrology"],
+            "calendar": ["calendar", "schedule", "appointment", "event", "what's on today"],
+            "calculator": ["calculate", "math", "compute", "what is"],
+            "currency": ["convert currency", "exchange rate", "convert dollars", "convert euros"],
+            "dictionary": ["define", "definition", "what does", "mean", "dictionary"]
         }
         self.listening = False
         self.listen_thread = None
@@ -195,6 +199,18 @@ class VoiceAssistant:
             
         elif any(phrase in command for phrase in self.commands["horoscope"]):
             self.get_horoscope(command)
+            
+        elif any(phrase in command for phrase in self.commands["calendar"]):
+            self.check_calendar(command)
+            
+        elif any(phrase in command for phrase in self.commands["calculator"]) or "+" in command or "-" in command or "*" in command or "/" in command or any(x in command for x in ["plus", "minus", "times", "divided by"]):
+            self.calculate(command)
+            
+        elif any(phrase in command for phrase in self.commands["currency"]) or ("convert" in command and any(currency in command for currency in ["dollar", "euro", "pound", "yen", "yuan", "rupee"])):
+            self.convert_currency(command)
+            
+        elif any(phrase in command for phrase in self.commands["dictionary"]):
+            self.define_word(command)
             
         else:
             self.speak("I heard you, but I'm not sure how to help with that yet.")
@@ -478,7 +494,7 @@ class VoiceAssistant:
             "pisces": "February 19 - March 20"
         }
         
-        # Extract sign from command
+        # Extracts sign from command
         sign = None
         for zodiac in zodiac_signs.keys():
             if zodiac in command:
@@ -486,7 +502,7 @@ class VoiceAssistant:
                 break
         
         if not sign:
-            # If no sign found in command, ask for it
+            # If no sign found in command, asks for it
             self.speak("Which zodiac sign would you like to hear the horoscope for?")
             return
         
@@ -505,7 +521,7 @@ class VoiceAssistant:
                 horoscope_text = f"Here's today's horoscope for {sign.capitalize()}, born {zodiac_signs[sign]}. {description} Your compatible sign is {compatibility}, your mood is {mood}, and your lucky number is {lucky_number}."
                 self.speak(horoscope_text)
             else:
-                # Fallback to predefined horoscopes if API fails
+                # Fallbacks to predefined horoscopes if API fails
                 fallback_horoscopes = {
                     "aries": "Today is a day for new beginnings. Your energy is high, and you're ready to take on challenges.",
                     "taurus": "Focus on stability today. Good time for financial decisions and enjoying life's comforts.",
@@ -526,8 +542,217 @@ class VoiceAssistant:
             print(f"Horoscope error: {e}")
             self.speak(f"I couldn't get the horoscope for {sign} at the moment.")
 
-    # Create an instance of the assistant after Eel is ready
-    assistant = None
+    def check_calendar(self, command):
+        """Check calendar for events"""
+        try:
+            # Simple calendar implementation using a JSON file
+            calendar_file = 'calendar.json'
+
+            # Creates calendar file if it doesn't exist
+            if not os.path.exists(calendar_file):
+                with open(calendar_file, 'w') as f:
+                    json.dump({"events": []}, f)
+            
+            # Loads existing events
+            with open(calendar_file, 'r') as f:
+                calendar_data = json.load(f)
+            
+            # Checks if command is to add an event
+            if "add" in command or "new" in command or "create" in command:
+                self.speak("What event would you like to add to your calendar?")
+                return
+                
+            # Checks if command is for a specific date
+            today = datetime.datetime.now().strftime("%Y-%m-%d")
+            date_to_check = today  # Default to today
+            
+            if "tomorrow" in command:
+                tomorrow = datetime.datetime.now() + datetime.timedelta(days=1)
+                date_to_check = tomorrow.strftime("%Y-%m-%d")
+            elif "next week" in command:
+                next_week = datetime.datetime.now() + datetime.timedelta(days=7)
+                date_to_check = next_week.strftime("%Y-%m-%d")
+                
+            # Filters events for the requested date
+            events_on_date = [event for event in calendar_data["events"] 
+                             if event["date"] == date_to_check]
+            
+            if events_on_date:
+                date_str = "today" if date_to_check == today else date_to_check
+                self.speak(f"You have {len(events_on_date)} events scheduled for {date_str}:")
+                for i, event in enumerate(events_on_date, 1):
+                    self.speak(f"{i}. {event['title']} at {event['time']}")
+            else:
+                date_str = "today" if date_to_check == today else date_to_check
+                self.speak(f"You don't have any events scheduled for {date_str}.")
+                
+        except Exception as e:
+            print(f"Calendar error: {e}")
+            self.speak("I couldn't access your calendar at the moment.")
+
+    def calculate(self, command):
+        """Perform basic calculations"""
+        try:
+            # Extracts the math expression
+            expression = None
+            
+            # Checks if command already contains a math expression
+            if any(op in command for op in ["+", "-", "*", "/", "plus", "minus", "times", "divided by"]):
+                # If it's a direct expression like "2 + 2"
+                expression = command
+            else:
+                # Otherwise tries to extract after phrases like "calculate"
+                for phrase in ["calculate", "compute", "what is"]:
+                    if phrase in command:
+                        expression = command.split(phrase, 1)[1].strip()
+                        break
+                        
+            if not expression:
+                self.speak("What would you like me to calculate?")
+                return
+                
+            # Replaces words with symbols
+            expression = expression.replace("plus", "+")
+            expression = expression.replace("minus", "-")
+            expression = expression.replace("times", "*")
+            expression = expression.replace("multiplied by", "*")
+            expression = expression.replace("divided by", "/")
+            expression = expression.replace("to the power of", "**")
+            
+            # Removes words like "equal", "equals", "is"
+            expression = expression.replace("equal", "")
+            expression = expression.replace("equals", "")
+            expression = expression.replace("is", "")
+            
+            # Removes any non-math characters
+            expression = ''.join(c for c in expression if c.isdigit() or c in '+-*/().^ ')
+            expression = expression.replace('^', '**')
+            
+            # Calculates the result
+            result = eval(expression)
+            
+            # Formats the result
+            if result == int(result):
+                result = int(result)
+            
+            self.speak(f"The result is {result}")
+        except Exception as e:
+            print(f"Calculator error: {e}")
+            self.speak("I couldn't calculate that. Please try a simpler expression.")
+
+    def convert_currency(self, command):
+        """Convert between currencies"""
+        try:
+            # Extracts amount and currencies
+            amount = None
+            from_currency = None
+            to_currency = None
+            
+            # Extracts amount
+            words = command.split()
+            for i, word in enumerate(words):
+                if word.replace('.', '').isdigit():
+                    amount = float(word)
+                    break
+            
+            # Common currencies
+            currencies = {
+                "dollar": "USD", "dollars": "USD", "usd": "USD",
+                "euro": "EUR", "euros": "EUR", "eur": "EUR",
+                "pound": "GBP", "pounds": "GBP", "gbp": "GBP",
+                "yen": "JPY", "jpy": "JPY",
+                "yuan": "CNY", "cny": "CNY",
+                "rupee": "INR", "rupees": "INR", "inr": "INR"
+            }
+            
+            # Extracts currencies
+            for currency_name, code in currencies.items():
+                if currency_name in command:
+                    if "to" in command:
+                        parts = command.split("to", 1)
+                        if currency_name in parts[0] and from_currency is None:
+                            from_currency = code
+                        elif currency_name in parts[1] and to_currency is None:
+                            to_currency = code
+                    else:
+                        if from_currency is None:
+                            from_currency = code
+                        elif to_currency is None and from_currency != code:
+                            to_currency = code
+            
+            # If missing information, asks for it
+            if amount is None:
+                self.speak("What amount would you like to convert?")
+                return
+            if from_currency is None:
+                self.speak("Which currency would you like to convert from?")
+                return
+            if to_currency is None:
+                self.speak("Which currency would you like to convert to?")
+                return
+            
+            # Uses a free currency API (be registracijos)
+            url = f"https://open.er-api.com/v6/latest/{from_currency}"
+            response = requests.get(url)
+            data = response.json()
+            
+            if response.status_code == 200 and data["result"] == "success":
+                # Gets the exchange rate
+                rate = data["rates"][to_currency]
+                converted_amount = amount * rate
+                
+                # Formats the result
+                self.speak(f"{amount} {from_currency} is approximately {converted_amount:.2f} {to_currency}")
+            else:
+                self.speak("I couldn't get the current exchange rate. Please try again later.")
+        except Exception as e:
+            print(f"Currency conversion error: {e}")
+            self.speak("I had trouble converting that currency. Please try again with a simpler request.")
+
+    def define_word(self, command):
+        """Look up the definition of a word"""
+        try:
+            # Extracts the word to define
+            word = None
+            for phrase in ["define", "definition of", "what does", "mean", "dictionary"]:
+                if phrase in command:
+                    parts = command.split(phrase, 1)
+                    if len(parts) > 1:
+                        word_part = parts[1] if phrase != "what does" else parts[1].split("mean", 1)[0]
+                        word = word_part.strip().rstrip('?').strip()
+                        break
+            
+            if not word:
+                self.speak("What word would you like me to define?")
+                return
+                
+            # Uses the Free Dictionary API
+            url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
+            response = requests.get(url)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data and isinstance(data, list) and len(data) > 0:
+                    # Gets the first definition
+                    first_entry = data[0]
+                    if "meanings" in first_entry and len(first_entry["meanings"]) > 0:
+                        meaning = first_entry["meanings"][0]
+                        part_of_speech = meaning["partOfSpeech"]
+                        if "definitions" in meaning and len(meaning["definitions"]) > 0:
+                            definition = meaning["definitions"][0]["definition"]
+                            self.speak(f"The word {word} is a {part_of_speech}. It means: {definition}")
+                            return
+                
+                self.speak(f"I found information about {word}, but couldn't extract a clear definition.")
+            else:
+                self.speak(f"I couldn't find a definition for {word}.")
+        except Exception as e:
+            print(f"Dictionary error: {e}")
+            self.speak(f"I had trouble looking up the definition of {word}.")
+
+
+# Creates an instance of the assistant after Eel is ready
+assistant = None
 
 @eel.expose
 def start_assistant():
@@ -542,46 +767,29 @@ def start_assistant():
         mics = sr.Microphone.list_microphone_names()
         print(f"Available microphones: {mics}")
         
+        # Initializes the speech engine
+        assistant.engine = None
+        assistant.speech_enabled = assistant.initialize_tts()
+        
+        # Starts listening for commands
         assistant.start_listening()
-        return "Assistant started"
+        return True
     except Exception as e:
         print(f"Error starting assistant: {e}")
-        return f"Error: {str(e)}"
+        return False
 
 @eel.expose
 def stop_assistant():
     global assistant
     if assistant:
         assistant.stop_listening()
-    return "Assistant stopped"
-
-# Starts the Eel application
-def ensure_background_image():
-    """Ensure a background image exists for the web interface"""
-    background_path = os.path.join('web', 'background1.jpg')
-
-    if not os.path.exists(background_path):
-        try:
-            import urllib.request
-            print("Downloading a background image...")
-            image_url = "https://source.unsplash.com/1600x900/?digital,assistant,blue"
-            urllib.request.urlretrieve(image_url, background_path)
-            print(f"Background image downloaded to {background_path}")
-        except Exception as e:
-            print(f"Could not download background image: {e}")
-            print("Using a solid color background instead")
+        return True
+    return False
 
 
 if __name__ == "__main__":
-    try:
-        ensure_background_image()
-        
-        eel.start('index.html', size=(800, 600), block=False)
-        
-        # Keeps the application running
-        while True:
-            eel.sleep(1.0)
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        print("Application closed")
+    # Initializes Eel with web directory
+    eel.init('web')
+    
+    # Starts the Eel application
+    eel.start('index.html', size=(800, 600))
