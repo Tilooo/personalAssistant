@@ -61,13 +61,13 @@ body {
 }
 
 .user-message {
-    background-color: #2196F3;
+    background: linear-gradient(45deg, #00c853, #64dd17, #aeea00, #9102e3);
     margin-left: auto;
     color: white;
 }
 
 .assistant-message {
-    background-color: #4CAF50;
+    background: linear-gradient(45deg, #018c08, #5902c4, #0702fa, #2979ff, #448aff, #9102e3);
     margin-right: auto;
     color: white;
 }
