@@ -5,26 +5,25 @@
     <script type="text/javascript" src="/eel.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <script type="text/javascript" src="/eel.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
     <div class="container">
         <header>
-            <header>
-                <div class="logo-container">
-                    <div class="electric-wave">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
+            <div class="logo-container">
+                <div class="electric-wave">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
-                <h1>Voice Assistant</h1>
-            </header>
+            </div>
+            <h1>Voice Assistant</h1>
         </header>
+
         <div class="status" id="statusText">Ready</div>
+
         <div class="listening-indicator" id="listeningIndicator" style="display: none;">
             <span></span>
             <span></span>
@@ -51,116 +50,111 @@
         <div class="help-section">
             <button id="helpToggle" class="help-toggle">Show Commands</button>
             <div id="commandList" class="command-list hidden">
+                <h3>Available Commands</h3>
+                <ul>
+                    <li><strong>Hello/Hi</strong> - Greet the assistant</li>
+                    <li><strong>What time is it?</strong> - Get the current time</li>
+                    <li><strong>Weather in [city]</strong> - Get current weather</li>
+                    <li><strong>News</strong> - Get latest news headlines</li>
+                    <li><strong>Sports news</strong> - Get sports headlines</li>
+                    <li><strong>Tell me a fact</strong> - Hear a random fact</li>
+                    <li><strong>Search for [topic]</strong> - Search the web</li>
+                    <li><strong>Tell me a joke</strong> - Hear a random joke</li>
+                    <li><strong>Add [task] to my to-do list</strong> - Add a task</li>
+                    <li><strong>Read my to-do list</strong> - Hear your tasks</li>
+                    <li><strong>Exit/Goodbye</strong> - Stop the assistant</li>
+                </ul>
             </div>
         </div>
+
         <script>
-            // Added this function to JavaScript
+            // --- Eel functions will call these ---
+            let lastUserMessage = '';
+            let lastAssistantMessage = '';
+
+            eel.expose(updateUserMessage);
+            function updateUserMessage(message) {
+                if (message === lastUserMessage) return;
+                lastUserMessage = message;
+                createMessage(message, 'user-message');
+            }
+
+            eel.expose(updateAssistantMessage);
+            function updateAssistantMessage(message) {
+                if (message === lastAssistantMessage) return;
+                lastAssistantMessage = message;
+                createMessage(message, 'assistant-message');
+            }
+
+            eel.expose(updateStatus);
+            function updateStatus(status) {
+                document.getElementById('statusText').textContent = status;
+                const waveform = document.getElementById('waveform');
+                const isListening = (status === "Listening..." || status === "Processing audio...");
+
+                if (isListening) {
+                    waveform.classList.add('active');
+                } else {
+                    waveform.classList.remove('active');
+                }
+            }
+
+            // This function is exposed for Python to call directly
+            eel.expose(showListeningIndicator);
+            function showListeningIndicator() {
+                document.getElementById('listeningIndicator').style.display = 'inline-block';
+            }
+
+            eel.expose(hideListeningIndicator);
+            function hideListeningIndicator() {
+                document.getElementById('listeningIndicator').style.display = 'none';
+            }
+
+            // --- UI Interaction functions ---
+            function startAssistant() {
+                console.log("Attempting to start assistant...");
+                // Call the function exposed in Python file: start_assistant()
+                eel.start_assistant();
+            }
+
+            function stopAssistant() {
+                console.log("Attempting to stop assistant.");
+                // Call the function exposed in Python file: stop_assistant()
+                eel.stop_assistant();
+            }
+
             function clearChat() {
                 document.getElementById('chatArea').innerHTML = '';
-                // Resets the last message trackers
                 lastUserMessage = '';
                 lastAssistantMessage = '';
+                updateStatus("Ready");
             }
+
+            // --- Helper Functions ---
+            function createMessage(message, className) {
+                const chatArea = document.getElementById('chatArea');
+                const messageElement = document.createElement('div');
+                messageElement.className = `message ${className}`;
+
+                const textNode = document.createTextNode(message);
+                messageElement.appendChild(textNode);
+
+                const timestamp = document.createElement('div');
+                timestamp.className = 'timestamp';
+                timestamp.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                messageElement.appendChild(timestamp);
+
+                chatArea.appendChild(messageElement);
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+
+            // --- Event Listeners ---
+            document.getElementById('helpToggle').addEventListener('click', function() {
+                const commandList = document.getElementById('commandList');
+                commandList.classList.toggle('hidden');
+                this.textContent = commandList.classList.contains('hidden') ? 'Show Commands' : 'Hide Commands';
+            });
         </script>
     </div>
-
-    <script src="app.js"></script>
 </body>
 </html>
-
-<div class="help-section">
-    <button id="helpToggle" class="help-toggle">Show Commands</button>
-    <div id="commandList" class="command-list hidden">
-        <h3>Available Commands</h3>
-        <ul>
-            <li><strong>Hello/Hi</strong> - Greet the assistant</li>
-            <li><strong>What time is it?</strong> - Get the current time</li>
-            <li><strong>Search for [topic]</strong> - Search the web</li>
-            <li><strong>Tell me a joke</strong> - Hear a random joke</li>
-            <li><strong>Add [task] to my to-do list</strong> - Add a task</li>
-            <li><strong>Read my to-do list</strong> - Hear your tasks</li>
-            <li><strong>Exit/Goodbye</strong> - Stop the assistant</li>
-        </ul>
-    </div>
-</div>
-
-<script>
-    document.getElementById('helpToggle').addEventListener('click', function() {
-        const commandList = document.getElementById('commandList');
-        if (commandList.classList.contains('hidden')) {
-            commandList.classList.remove('hidden');
-            this.textContent = 'Hide Commands';
-        } else {
-            commandList.classList.add('hidden');
-            this.textContent = 'Show Commands';
-        }
-    });
-</script>
-
-<script>
-    let lastUserMessage = '';
-    let lastAssistantMessage = '';
-
-    eel.expose(updateUserMessage);
-    function updateUserMessage(message) {
-        if (message === lastUserMessage) return;
-        lastUserMessage = message;
-
-        const chatArea = document.getElementById('chatArea');
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message user-message';
-        messageElement.textContent = message;
-
-        // Timestamp
-        const timestamp = document.createElement('div');
-        timestamp.className = 'timestamp';
-        timestamp.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        messageElement.appendChild(timestamp);
-
-        chatArea.appendChild(messageElement);
-        chatArea.scrollTop = chatArea.scrollHeight;
-    }
-
-    // AssistantMessage function
-    eel.expose(updateAssistantMessage);
-    function updateAssistantMessage(message) {
-        // Prevents duplicate messages
-        if (message === lastAssistantMessage) return;
-        lastAssistantMessage = message;
-
-        const chatArea = document.getElementById('chatArea');
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message assistant-message';
-        messageElement.textContent = message;
-
-        // Timestamp
-        const timestamp = document.createElement('div');
-        timestamp.className = 'timestamp';
-        timestamp.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        messageElement.appendChild(timestamp);
-
-        chatArea.appendChild(messageElement);
-        chatArea.scrollTop = chatArea.scrollHeight;
-    }
-
-    eel.expose(showListeningIndicator);
-    function showListeningIndicator() {
-        document.getElementById('listeningIndicator').style.display = 'inline-block';
-    }
-
-    eel.expose(hideListeningIndicator);
-    function hideListeningIndicator() {
-        document.getElementById('listeningIndicator').style.display = 'none';
-    }
-
-    eel.expose(updateStatus);
-    function updateStatus(status) {
-        document.getElementById('statusText').textContent = status;
-
-        if (status === "Listening..." || status === "Processing audio...") {
-            showListeningIndicator();
-        } else {
-            hideListeningIndicator();
-        }
-    }
-</script>
