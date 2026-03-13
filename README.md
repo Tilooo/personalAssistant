@@ -1,6 +1,9 @@
 # Voice Assistant
 A modern web-based voice assistant that responds to voice commands and provides helpful information through a clean, intuitive interface.
 
+<img width="2752" height="1536" alt="assistant" src="https://github.com/user-attachments/assets/5e919d6a-6a46-4cf8-90ea-14e1a7e4440c" />
+
+
 ## Features
 - Voice Recognition: Listens to your voice commands and responds accordingly
 - Natural Language Processing: Understands conversational language
